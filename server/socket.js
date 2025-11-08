@@ -1,6 +1,7 @@
 const { Server } = require("socket.io");
 
 let onlineUsers = {}; // { userId: socketId }
+let avatars = {};     // { userId: { x, y, color, name } }
 let activeClubEvents = {}; // { clubEventRoom: [userIds...] }
 
 function initSocket(server) {
@@ -13,12 +14,41 @@ function initSocket(server) {
   });
 
   io.on("connection", (socket) => {
-    console.log("🟢 New client connected:", socket.id);
+    const userId = socket.handshake.query.userId;
+    if (!userId) return;
 
-    // ========= Campus Room Logic =========
+    console.log("🟢 New client connected:", socket.id);
+    onlineUsers[userId] = socket.id;
+
+    // ========== 🧍 AVATAR LOGIC ==========
+    if (!avatars[userId]) {
+      avatars[userId] = {
+        x: 100 + Math.random() * 300,
+        y: 100 + Math.random() * 200,
+        color: "#00AEEF",
+        name: `User-${userId.slice(-4)}`,
+      };
+    }
+
+    io.emit("avatarsUpdate", avatars);
+
+    socket.on("moveAvatar", ({ userId, dx, dy }) => {
+      if (!avatars[userId]) return;
+      avatars[userId].x += dx;
+      avatars[userId].y += dy;
+      io.emit("avatarsUpdate", avatars);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("🔴 Disconnected:", socket.id);
+      delete onlineUsers[userId];
+      delete avatars[userId];
+      io.emit("avatarsUpdate", avatars);
+    });
+
+    // ========== 🧩 ROOM & CHAT LOGIC ==========
     socket.on("join-room", ({ userId, room }) => {
       socket.join(room);
-      onlineUsers[userId] = socket.id;
       console.log(`👤 User ${userId} joined ${room}`);
       socket.to(room).emit("user-joined", { userId, room });
     });
@@ -36,7 +66,7 @@ function initSocket(server) {
       });
     });
 
-    // ========= Private Chat Logic =========
+    // ========== 💬 PRIVATE MESSAGES ==========
     socket.on("send-private-message", ({ senderId, receiverId, text }) => {
       const receiverSocket = onlineUsers[receiverId];
       if (receiverSocket) {
@@ -48,17 +78,12 @@ function initSocket(server) {
       }
     });
 
-    // ========= Club Event Logic =========
+    // ========== 🎪 CLUB EVENTS ==========
     socket.on("join-club-event", ({ userId, eventRoom }) => {
       socket.join(eventRoom);
-
-      if (!activeClubEvents[eventRoom]) {
-        activeClubEvents[eventRoom] = [];
-      }
-
-      if (!activeClubEvents[eventRoom].includes(userId)) {
+      if (!activeClubEvents[eventRoom]) activeClubEvents[eventRoom] = [];
+      if (!activeClubEvents[eventRoom].includes(userId))
         activeClubEvents[eventRoom].push(userId);
-      }
 
       console.log(`🎪 User ${userId} joined club event: ${eventRoom}`);
 
@@ -80,7 +105,6 @@ function initSocket(server) {
 
     socket.on("leave-club-event", ({ userId, eventRoom }) => {
       socket.leave(eventRoom);
-
       if (activeClubEvents[eventRoom]) {
         activeClubEvents[eventRoom] = activeClubEvents[eventRoom].filter(
           (id) => id !== userId
@@ -88,32 +112,11 @@ function initSocket(server) {
       }
 
       console.log(`🚪 User ${userId} left event: ${eventRoom}`);
-
       io.to(eventRoom).emit("club-event-left", {
         userId,
         eventRoom,
         participants: activeClubEvents[eventRoom],
       });
-    });
-
-    // ========= Handle Disconnect =========
-    socket.on("disconnect", () => {
-      console.log("🔴 Client disconnected:", socket.id);
-
-      for (const userId in onlineUsers) {
-        if (onlineUsers[userId] === socket.id) {
-          delete onlineUsers[userId];
-          break;
-        }
-      }
-
-      for (const eventRoom in activeClubEvents) {
-        activeClubEvents[eventRoom] = activeClubEvents[eventRoom].filter(
-          (id) => onlineUsers[id]
-        );
-      }
-
-      io.emit("user-left", { socketId: socket.id });
     });
   });
 }

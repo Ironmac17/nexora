@@ -1,39 +1,34 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { getUserInfo } from "../services/authService";
+import { createContext, useContext, useState } from "react";
+import { loginUser, getUserInfo, verifyOtp, requestOtp } from "../services/authService";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("nexoraToken"));
+  const [token, setToken] = useState(localStorage.getItem("nexoraToken") || null);
 
-  useEffect(() => {
-    if (token && !user) {
-      (async () => {
-        try {
-          const data = await getUserInfo(token);
-          setUser(data);
-        } catch (err) {
-          console.error("Auth load failed", err);
-        }
-      })();
-    }
-  }, [token]);
+const login = (user, token) => {
+  setUser(user);
+  setToken(token);
+  localStorage.setItem("nexora_user", JSON.stringify(user));
+  localStorage.setItem("nexora_token", token);
+};
 
-  const login = (token, userData) => {
-    localStorage.setItem("nexoraToken", token);
-    setToken(token);
+
+  const loadUser = async () => {
+    if (!token) return;
+    const userData = await getUserInfo(token);
     setUser(userData);
   };
 
   const logout = () => {
     localStorage.removeItem("nexoraToken");
-    setToken(null);
     setUser(null);
+    setToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, setUser, setToken }}>
       {children}
     </AuthContext.Provider>
   );
