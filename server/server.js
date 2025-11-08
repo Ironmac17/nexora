@@ -5,7 +5,7 @@ const path = require("path");
 const connectDB = require("./config/db");
 require("./models/Note");
 const authRoutes=require("./routes/authRoutes")
-// const chatRoutes=require("./routes/chatRoutes")
+const chatRoutes=require("./routes/chatRoutes")
 // const clubRoutes=require("./routes/clubRoutes")
 const noteRoutes=require("./routes/noteRoutes")
 const userRoutes=require("./routes/userRoutes")
@@ -32,7 +32,7 @@ app.get("/", (req, res) => {
 
 
 app.use("/api/nex/auth",authRoutes);
-// app.use("/api/nex/chat",chatRoutes);
+app.use("/api/nex/chat",chatRoutes);
 // app.use("/api/nex/club",clubRoutes);
 app.use("/api/nex/note",noteRoutes);
 app.use("/api/nex/user",userRoutes);
