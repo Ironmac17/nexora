@@ -10,6 +10,7 @@ import NotesPage from "./src/pages/NotesPage";
 import ClubPage from "./src/pages/ClubPage";
 import EventPage from "./src/pages/EventPage";
 import ChatPage from "./src/pages/ChatPage";
+import ClubsPage from "./src/pages/ClubsPage";
 
 export default function AppRouter() {
   const { user } = useAuth();
@@ -83,6 +84,14 @@ export default function AppRouter() {
         element={
           <Protected>
             <ClubPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/clubs"
+        element={
+          <Protected>
+            <ClubsPage />
           </Protected>
         }
       />

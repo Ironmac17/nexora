@@ -1,9 +1,10 @@
-import React from 'react'
-
-const Footer = () => {
+export default function Footer() {
   return (
-    <div>Footer</div>
-  )
+    <footer className="text-center py-6 border-t border-surface mt-12 text-textSub text-sm bg-background/50 backdrop-blur">
+      <p>
+        © {new Date().getFullYear()} <span className="text-accent font-semibold">Nexora</span>. 
+        Built for campus collaboration.
+      </p>
+    </footer>
+  );
 }
-
-export default Footer

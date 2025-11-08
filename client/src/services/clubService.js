@@ -1,38 +1,32 @@
-// src/services/clubService.js
 import api from "./api";
 
-// Get all clubs on campus
 export const getAllClubs = async () => {
-  const { data } = await api.get("/club/all");
+  const { data } = await api.get("/club");
   return data;
 };
 
-// Get a single club with details
-export const getClubById = async (clubId) => {
-  const { data } = await api.get(`/club/${clubId}`);
+export const getClubById = async (id) => {
+  const { data } = await api.get(`/club/${id}`);
   return data;
 };
 
-// Join a club
-export const joinClub = async (clubId) => {
-  const { data } = await api.post(`/club/join/${clubId}`);
+export const joinClub = async (token, id) => {
+  const { data } = await api.post(`/club/join/${id}`, {}, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return data;
 };
 
-// Leave a club
-export const leaveClub = async (clubId) => {
-  const { data } = await api.post(`/club/leave/${clubId}`);
+export const leaveClub = async (token, id) => {
+  const { data } = await api.post(`/club/leave/${id}`, {}, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return data;
 };
 
-// Create a new club (for admins)
-export const createClub = async (payload) => {
-  const { data } = await api.post("/club/create", payload);
-  return data;
-};
-
-// Post a club announcement or Q&A
-export const postClubMessage = async (clubId, payload) => {
-  const { data } = await api.post(`/club/${clubId}/message`, payload);
+export const createClubPost = async (token, id, title, content) => {
+  const { data } = await api.post(`/club/${id}/post`, { title, content }, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return data;
 };

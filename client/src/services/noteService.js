@@ -1,26 +1,42 @@
-// src/services/noteService.js
 import api from "./api";
 
-// Get all notes of logged-in user
-export const getUserNotes = async () => {
-  const { data } = await api.get("/note/all");
+// Create a new note
+export const createNote = async (token, noteData) => {
+  const { data } = await api.post("/note", noteData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return data;
 };
 
-// Create new note
-export const createNote = async (payload) => {
-  const { data } = await api.post("/note/create", payload);
+// Fetch notes for a specific room (e.g., "canteen", "library")
+export const getNotesByRoom = async (token, room) => {
+  const { data } = await api.get(`/note/room/${room}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return data;
 };
 
-// Edit a note
-export const updateNote = async (id, payload) => {
-  const { data } = await api.put(`/note/update/${id}`, payload);
+// Fetch notes created by a specific user
+export const getNotesByUser = async (token, userId) => {
+  if (!userId) throw new Error("User ID is required");
+  const { data } = await api.get(`/note/user/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return data;
 };
 
-// Delete a note
-export const deleteNote = async (id) => {
-  const { data } = await api.delete(`/note/delete/${id}`);
+// Delete a note by ID
+export const deleteNote = async (token, noteId) => {
+  const { data } = await api.delete(`/note/${noteId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return data;
 };

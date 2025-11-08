@@ -1,103 +1,162 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { getRecentChats } from "../services/chatService";
 import { useAuth } from "../context/AuthContext";
-import useSocket from "../hooks/useSocket";
-import MessageList from "../components/chat/MessageList";
-import MessageInput from "../components/chat/MessageInput";
-import { UserCircle2 } from "lucide-react";
+import { useSocketContext } from "../context/SocketContext";
+import { getMessagesByRoom, sendRoomMessage } from "../services/chatService";
+import { Loader2, SendHorizonal } from "lucide-react";
 
 export default function ChatPage() {
-  const { user } = useAuth();
-  const { socket, onlineUsers } = useSocket();
-  const [conversations, setConversations] = useState([]);
-  const [activeChat, setActiveChat] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, token } = useAuth();
+  const { socket } = useSocketContext();
 
-  // Fetch recent conversations
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const room = "campus";
+  const messagesEndRef = useRef(null);
+
+  // Fetch old messages
   useEffect(() => {
-    (async () => {
+    const fetchMessages = async () => {
       try {
-        const data = await getRecentChats();
-        setConversations(data);
+        setLoading(true);
+        const data = await getMessagesByRoom(token, room);
+        setMessages(data || []);
       } catch (err) {
-        console.error("Error fetching chats:", err);
+        console.error("Error fetching messages:", err);
       } finally {
         setLoading(false);
       }
-    })();
-  }, []);
+    };
+    fetchMessages();
+  }, [token]);
 
-  // Handle user connection
+  // Scroll to bottom when messages update
   useEffect(() => {
-    if (socket && user) {
-      socket.emit("joinUser", user._id);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Socket listeners
+  useEffect(() => {
+    if (!socket) return;
+    socket.emit("join-room", { userId: user?.id, room });
+
+    socket.on("receive-room-message", (msg) => {
+      // avoid duplicate if user already sent this locally
+      if (msg.sender?._id === user?.id) return;
+      setMessages((prev) => [...prev, msg]);
+    });
+
+    return () => {
+      socket.off("receive-room-message");
+    };
+  }, [socket, user?.id]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+
+    const localMessage = {
+      sender: user,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, localMessage]);
+    setText("");
+
+    try {
+      await sendRoomMessage(token, room, text);
+      socket.emit("send-room-message", {
+        room,
+        sender: user,
+        text,
+      });
+    } catch (err) {
+      console.error("Error sending message:", err);
     }
-  }, [socket, user]);
+  };
 
   return (
     <motion.div
-      className="flex h-[calc(100vh-4rem)] bg-background text-textMain"
+      className="flex flex-col h-screen bg-background text-textMain px-4 pb-20 pt-24"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
     >
-      {/* Sidebar */}
-      <aside className="w-1/4 border-r border-surface/40 bg-surface/10 overflow-y-auto p-4">
-        <h2 className="text-lg font-semibold text-accent mb-4">Chats</h2>
+      <h1 className="text-2xl font-bold mb-3 text-accent text-center">
+        Campus Chat 💬
+      </h1>
 
+      <div className="flex-1 overflow-y-auto bg-surface/30 rounded-xl border border-surface/60 p-4 space-y-3 scrollbar-thin scrollbar-thumb-accent/40 scrollbar-track-transparent">
         {loading ? (
-          <p className="text-textSub text-sm">Loading...</p>
-        ) : conversations.length === 0 ? (
-          <p className="text-textSub text-sm">No recent chats</p>
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="animate-spin text-accent" />
+          </div>
+        ) : messages.length === 0 ? (
+          <p className="text-center text-textSub mt-10">No messages yet...</p>
         ) : (
-          <div className="space-y-2">
-            {conversations.map((chat) => {
-              const partner =
-                chat.user1._id === user._id ? chat.user2 : chat.user1;
-              const isOnline = onlineUsers.includes(partner._id);
-              return (
+          messages.map((msg, i) => {
+            const isMine =
+              msg.sender?._id === user?.id || msg.sender?.id === user?.id;
+            return (
+              <div
+                key={i}
+                className={`flex w-full ${
+                  isMine ? "justify-end" : "justify-start"
+                }`}
+              >
                 <div
-                  key={chat._id}
-                  onClick={() => setActiveChat(partner)}
-                  className={`flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-surface/20 ${
-                    activeChat?._id === partner._id ? "bg-surface/30" : ""
+                  className={`flex flex-col max-w-[70%] p-3 rounded-2xl shadow-md ${
+                    isMine
+                      ? "bg-accent text-background rounded-br-none"
+                      : "bg-surface text-textMain rounded-bl-none"
                   }`}
                 >
-                  <UserCircle2 size={32} className="text-accent" />
-                  <div>
-                    <p className="font-medium">{partner.fullName}</p>
-                    <p className="text-xs text-textSub">
-                      {isOnline ? "🟢 Online" : "⚫ Offline"}
+                  {!isMine && (
+                    <p className="text-xs text-textSub mb-1 font-medium">
+                      {msg.sender?.fullName || "Student"}
                     </p>
-                  </div>
+                  )}
+                  <p className="text-sm leading-relaxed">{msg.text}</p>
+                  <span
+                    className={`text-[10px] mt-1 text-right ${
+                      isMine ? "text-background/70" : "text-textSub"
+                    }`}
+                  >
+                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })
         )}
-      </aside>
-
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {activeChat ? (
-          <>
-            <div className="flex items-center justify-between p-4 border-b border-surface/40 bg-surface/20">
-              <h2 className="text-accent font-semibold">{activeChat.fullName}</h2>
-              <p className="text-xs text-textSub">
-                {onlineUsers.includes(activeChat._id) ? "Online" : "Offline"}
-              </p>
-            </div>
-
-            <MessageList />
-            <MessageInput receiverId={activeChat._id} />
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-textSub">
-            Select a conversation to start chatting
-          </div>
-        )}
+        <div ref={messagesEndRef} />
       </div>
+
+      <form
+        onSubmit={handleSend}
+        className="flex items-center gap-3 mt-3 bg-surface/40 border border-surface/70 p-3 rounded-xl shadow-md"
+      >
+        <input
+          type="text"
+          placeholder="Type your message..."
+          className="flex-1 bg-transparent focus:outline-none text-textMain placeholder-textSub text-sm"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="bg-accent text-background px-4 py-2 rounded-lg flex items-center gap-1 font-semibold text-sm hover:opacity-90 active:scale-95 transition-all"
+        >
+          <SendHorizonal className="h-4 w-4" />
+          Send
+        </button>
+      </form>
     </motion.div>
   );
 }
