@@ -3,8 +3,12 @@ const express =require("express");
 const cors=require("cors")
 const path = require("path");
 const connectDB = require("./config/db");
-const authRoutes=require("./routes/authRoutes")
 require("./models/Note");
+const authRoutes=require("./routes/authRoutes")
+// const chatRoutes=require("./routes/chatRoutes")
+// const clubRoutes=require("./routes/clubRoutes")
+const noteRoutes=require("./routes/noteRoutes")
+// const userRoutes=require("./routes/userRoutes")
 
 const app = express();
 
@@ -27,6 +31,12 @@ app.get("/", (req, res) => {
 
 
 app.use("/api/nex/auth",authRoutes);
+// app.use("/api/nex/chat",chatRoutes);
+// app.use("/api/nex/club",clubRoutes);
+app.use("/api/nex/note",noteRoutes);
+// app.use("/api/nex/user",userRoutes);
+
+
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
