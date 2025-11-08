@@ -8,7 +8,7 @@ const authRoutes=require("./routes/authRoutes")
 // const chatRoutes=require("./routes/chatRoutes")
 // const clubRoutes=require("./routes/clubRoutes")
 const noteRoutes=require("./routes/noteRoutes")
-// const userRoutes=require("./routes/userRoutes")
+const userRoutes=require("./routes/userRoutes")
 
 const app = express();
 
@@ -23,6 +23,7 @@ app.use(
 
 app.use(express.json());
 connectDB();
+app.use(express.urlencoded({ extended: true }));
 
 
 app.get("/", (req, res) => {
@@ -34,7 +35,7 @@ app.use("/api/nex/auth",authRoutes);
 // app.use("/api/nex/chat",chatRoutes);
 // app.use("/api/nex/club",clubRoutes);
 app.use("/api/nex/note",noteRoutes);
-// app.use("/api/nex/user",userRoutes);
+app.use("/api/nex/user",userRoutes);
 
 
 
