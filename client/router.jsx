@@ -11,6 +11,8 @@ import ClubPage from "./src/pages/ClubPage";
 import EventPage from "./src/pages/EventPage";
 import ChatPage from "./src/pages/ChatPage";
 import ClubsPage from "./src/pages/ClubsPage";
+import AreaDashboard from "./src/pages/AreaDashboard";
+
 
 export default function AppRouter() {
   const { user } = useAuth();
@@ -103,6 +105,7 @@ export default function AppRouter() {
           </Protected>
         }
       />
+      <Route path="/area/:id" element={<AreaDashboard />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

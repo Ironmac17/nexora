@@ -27,7 +27,14 @@ const UserSchema = new mongoose.Schema(
     otpExpire: { type: Date, default: null },
     resetOTP: { type: String, default: null },
     resetOTPExpire: { type: Date, default: null },
+    position: {
+      areaSlug: { type: String, default: null },
+      x: { type: Number, default: 100 },
+      y: { type: Number, default: 100 },
+      lastUpdated: { type: Date, default: Date.now }
+    },
   },
+  
   { timestamps: true }
 );
 

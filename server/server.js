@@ -9,6 +9,8 @@ const chatRoutes=require("./routes/chatRoutes")
 const clubRoutes=require("./routes/clubRoutes")
 const noteRoutes=require("./routes/noteRoutes")
 const userRoutes=require("./routes/userRoutes")
+const areaRoutes=require("./routes/areaRoutes")
+
 const initSocket = require("./socket");
 const app = express();
 
@@ -36,7 +38,7 @@ app.use("/api/nex/chat",chatRoutes);
 app.use("/api/nex/club",clubRoutes);
 app.use("/api/nex/note",noteRoutes);
 app.use("/api/nex/user",userRoutes);
-
+app.use("/api/nex/area", areaRoutes);
 
 const server = http.createServer(app);
 initSocket(server);

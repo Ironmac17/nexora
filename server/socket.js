@@ -1,7 +1,10 @@
+// server/socket.js
 const { Server } = require("socket.io");
+const Area = require("./models/Area");
+const User = require("./models/User");
 
 let onlineUsers = {}; // { userId: socketId }
-let avatars = {};     // { userId: { x, y, color, name } }
+let avatars = {};     // { userId: { x, y, color, name, areaSlug } }
 let activeClubEvents = {}; // { clubEventRoom: [userIds...] }
 
 function initSocket(server) {
@@ -13,97 +16,131 @@ function initSocket(server) {
     },
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     const userId = socket.handshake.query.userId;
-    if (!userId) return;
+    if (!userId) {
+      console.log("❌ Connection rejected (no userId)");
+      socket.disconnect();
+      return;
+    }
 
-    console.log("🟢 New client connected:", socket.id);
+    console.log(`🟢 User connected: ${socket.id} (${userId})`);
     onlineUsers[userId] = socket.id;
 
-    // ========== 🧍 AVATAR LOGIC ==========
+    // ========== 🧍 Load Avatar & Position ==========
+    let userDoc = await User.findById(userId).lean();
+    const color = "#" + Math.floor(Math.random() * 16777215).toString(16);
+
     if (!avatars[userId]) {
       avatars[userId] = {
-        x: 100 + Math.random() * 300,
-        y: 100 + Math.random() * 200,
-        color: "#00AEEF",
-        name: `User-${userId.slice(-4)}`,
+        x: userDoc?.position?.x || 200 + Math.random() * 100,
+        y: userDoc?.position?.y || 200 + Math.random() * 100,
+        color,
+        name: userDoc?.fullName || `User-${userId.slice(-4)}`,
+        areaSlug: userDoc?.position?.areaSlug || "main-entrance",
       };
     }
 
     io.emit("avatarsUpdate", avatars);
+    io.emit("onlineUsersUpdate", Object.keys(onlineUsers));
 
-    socket.on("moveAvatar", ({ userId, dx, dy }) => {
+    // ========== 🏫 AREA LOGIC ==========
+    socket.on("joinArea", async (areaSlug) => {
+      try {
+        socket.join(areaSlug);
+        const area = await Area.findOneAndUpdate(
+          { slug: areaSlug },
+          { $inc: { usersOnline: 1 } }
+        );
+        if (area) io.to(areaSlug).emit("areaStatusUpdate", { areaId: areaSlug });
+        console.log(`🏠 ${userId} joined area ${areaSlug}`);
+
+        // update user area in DB
+        await User.findByIdAndUpdate(userId, {
+          "position.areaSlug": areaSlug,
+          "position.lastUpdated": new Date(),
+        });
+        if (avatars[userId]) avatars[userId].areaSlug = areaSlug;
+      } catch (err) {
+        console.error("joinArea error:", err.message);
+      }
+    });
+
+    socket.on("leaveArea", async (areaSlug) => {
+      try {
+        socket.leave(areaSlug);
+        const area = await Area.findOneAndUpdate(
+          { slug: areaSlug },
+          { $inc: { usersOnline: -1 } }
+        );
+        if (area) io.to(areaSlug).emit("areaStatusUpdate", { areaId: areaSlug });
+        console.log(`🚪 ${userId} left area ${areaSlug}`);
+      } catch (err) {
+        console.error("leaveArea error:", err.message);
+      }
+    });
+
+    // ========== 🎮 AVATAR MOVEMENT ==========
+    socket.on("moveAvatar", async ({ x, y, area }) => {
       if (!avatars[userId]) return;
-      avatars[userId].x += dx;
-      avatars[userId].y += dy;
+      avatars[userId].x = x;
+      avatars[userId].y = y;
+      avatars[userId].areaSlug = area;
       io.emit("avatarsUpdate", avatars);
+
+      // update position in DB (non-blocking)
+      User.findByIdAndUpdate(userId, {
+        position: {
+          areaSlug: area,
+          x,
+          y,
+          lastUpdated: new Date(),
+        },
+      }).catch(() => {});
     });
 
-    socket.on("disconnect", () => {
-      console.log("🔴 Disconnected:", socket.id);
-      delete onlineUsers[userId];
-      delete avatars[userId];
-      io.emit("avatarsUpdate", avatars);
-    });
-
-    // ========== 🧩 ROOM & CHAT LOGIC ==========
-    socket.on("join-room", ({ userId, room }) => {
-      socket.join(room);
-      console.log(`👤 User ${userId} joined ${room}`);
-      socket.to(room).emit("user-joined", { userId, room });
-    });
-
-    socket.on("move-avatar", ({ userId, x, y, room }) => {
-      socket.to(room).emit("avatar-moved", { userId, x, y });
-    });
-
-    socket.on("send-room-message", ({ room, sender, text }) => {
-      io.to(room).emit("receive-room-message", {
-        sender,
-        text,
-        room,
-        createdAt: new Date(),
-      });
-    });
-
-    // ========== 💬 PRIVATE MESSAGES ==========
-    socket.on("send-private-message", ({ senderId, receiverId, text }) => {
+    // ========== 💬 PRIVATE MESSAGING ==========
+    socket.on("sendPrivateMessage", ({ receiverId, text }) => {
       const receiverSocket = onlineUsers[receiverId];
       if (receiverSocket) {
-        io.to(receiverSocket).emit("receive-private-message", {
-          senderId,
+        io.to(receiverSocket).emit("receivePrivateMessage", {
+          senderId: userId,
           text,
           createdAt: new Date(),
         });
       }
     });
 
+    // ========== 🧩 ROOM CHAT ==========
+    socket.on("joinRoom", (room) => {
+      socket.join(room);
+      console.log(`👥 ${userId} joined room: ${room}`);
+    });
+
+    socket.on("sendRoomMessage", ({ room, text }) => {
+      io.to(room).emit("receiveRoomMessage", {
+        sender: userId,
+        text,
+        room,
+        createdAt: new Date(),
+      });
+    });
+
     // ========== 🎪 CLUB EVENTS ==========
-    socket.on("join-club-event", ({ userId, eventRoom }) => {
+    socket.on("joinClubEvent", ({ eventRoom }) => {
       socket.join(eventRoom);
       if (!activeClubEvents[eventRoom]) activeClubEvents[eventRoom] = [];
       if (!activeClubEvents[eventRoom].includes(userId))
         activeClubEvents[eventRoom].push(userId);
 
-      console.log(`🎪 User ${userId} joined club event: ${eventRoom}`);
-
-      io.to(eventRoom).emit("club-event-joined", {
-        userId,
+      console.log(`🎪 ${userId} joined club event ${eventRoom}`);
+      io.to(eventRoom).emit("clubEventUpdate", {
         eventRoom,
         participants: activeClubEvents[eventRoom],
       });
     });
 
-    socket.on("send-club-message", ({ eventRoom, sender, text }) => {
-      io.to(eventRoom).emit("receive-club-message", {
-        sender,
-        text,
-        eventRoom,
-        createdAt: new Date(),
-      });
-    });
-
-    socket.on("leave-club-event", ({ userId, eventRoom }) => {
+    socket.on("leaveClubEvent", ({ eventRoom }) => {
       socket.leave(eventRoom);
       if (activeClubEvents[eventRoom]) {
         activeClubEvents[eventRoom] = activeClubEvents[eventRoom].filter(
@@ -111,14 +148,58 @@ function initSocket(server) {
         );
       }
 
-      console.log(`🚪 User ${userId} left event: ${eventRoom}`);
-      io.to(eventRoom).emit("club-event-left", {
-        userId,
+      console.log(`🚪 ${userId} left club event ${eventRoom}`);
+      io.to(eventRoom).emit("clubEventUpdate", {
         eventRoom,
         participants: activeClubEvents[eventRoom],
       });
     });
+
+    socket.on("sendClubMessage", ({ eventRoom, text }) => {
+      io.to(eventRoom).emit("receiveClubMessage", {
+        sender: userId,
+        text,
+        eventRoom,
+        createdAt: new Date(),
+      });
+    });
+
+    // ========== 🔴 DISCONNECT ==========
+    socket.on("disconnect", async () => {
+      console.log(`🔴 User disconnected: ${socket.id} (${userId})`);
+
+      // Save last known position in DB
+      const av = avatars[userId];
+      if (av) {
+        await User.findByIdAndUpdate(userId, {
+          position: {
+            areaSlug: av.areaSlug,
+            x: av.x,
+            y: av.y,
+            lastUpdated: new Date(),
+          },
+        }).catch(() => {});
+      }
+
+      // Remove user from memory
+      delete onlineUsers[userId];
+      delete avatars[userId];
+
+      io.emit("avatarsUpdate", avatars);
+      io.emit("onlineUsersUpdate", Object.keys(onlineUsers));
+
+      // Clean up club event rooms
+      for (const [room, members] of Object.entries(activeClubEvents)) {
+        activeClubEvents[room] = members.filter((id) => id !== userId);
+        io.to(room).emit("clubEventUpdate", {
+          eventRoom: room,
+          participants: activeClubEvents[room],
+        });
+      }
+    });
   });
+
+  return io;
 }
 
 module.exports = initSocket;

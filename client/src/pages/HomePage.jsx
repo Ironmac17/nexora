@@ -1,41 +1,35 @@
-import { motion } from "framer-motion";
-import { useSocketContext } from "../context/SocketContext";
-import { useAuth } from "../context/AuthContext";
-import AvatarCanvas from "../components/avatar/AvatarCanvas";
+// src/pages/HomePage.jsx
+import React from 'react';
+import CampusMap from '../components/map/CampusMap';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const { socket } = useSocketContext();
+  const navigate = useNavigate();
+  const { user } = useAuth(); // if you already expose it
+
+  const handleAreaClick = (area) => {
+    // persist locally for now; backend persistence comes in Step 5
+    localStorage.setItem('nexora:lastArea', area.id);
+    navigate(`/area/${area.id}`); // we'll build this page next
+  };
+
+  const lastArea = localStorage.getItem('nexora:lastArea') || 'main-entrance';
 
   return (
-    <motion.div
-      className="min-h-screen flex flex-col items-center justify-center bg-background text-textMain"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="text-center mb-4">
-        <h1 className="text-3xl font-bold text-accent">
-          Welcome, {user?.fullName || "Student"}
-        </h1>
-        <p className="text-textSub mt-2">
-          {socket ? (
-            <span className="text-green-400">🟢 Connected to Campus</span>
-          ) : (
-            <span className="text-red-400">🔴 Offline</span>
-          )}
-        </p>
+    <div className="mx-auto max-w-7xl p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Campus</h1>
+        <div className="text-sm text-gray-600">
+          {user?.name ? `Hi, ${user.name}` : 'Welcome'}
+        </div>
       </div>
 
-      <motion.div
-        className="bg-surface rounded-2xl shadow-lg border border-surface/70 p-4"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        <AvatarCanvas />
-      </motion.div>
-    </motion.div>
+      <CampusMap onAreaClick={handleAreaClick} userAreaId={lastArea} />
+
+      <div className="mt-4 text-sm text-gray-600">
+        Tip: hover an area to see live status, click to open its dashboard.
+      </div>
+    </div>
   );
 }

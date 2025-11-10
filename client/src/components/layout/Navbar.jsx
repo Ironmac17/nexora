@@ -1,11 +1,5 @@
 import { motion } from "framer-motion";
-import {
-  LogOut,
-  Home,
-  MessageCircle,
-  StickyNote,
-  Users,
-} from "lucide-react";
+import { LogOut, Home, MessageCircle, StickyNote, Users, Calendar } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
@@ -22,6 +16,9 @@ export default function Navbar() {
   const isActive = (path) =>
     location.pathname === path ||
     (path === "/clubs" && location.pathname.startsWith("/clubs"));
+
+  // detect if inside area dashboard
+  const inArea = location.pathname.startsWith("/area/");
 
   return (
     <motion.nav
@@ -41,30 +38,51 @@ export default function Navbar() {
 
       {/* Navigation Links */}
       <div className="flex gap-6 items-center text-sm font-medium">
-        <NavItem
-          to="/home"
-          icon={<Home size={18} />}
-          label="Home"
-          active={isActive("/home")}
-        />
-        <NavItem
-          to="/notes"
-          icon={<StickyNote size={18} />}
-          label="Notes"
-          active={isActive("/notes")}
-        />
-        <NavItem
-          to="/chat"
-          icon={<MessageCircle size={18} />}
-          label="Chat"
-          active={isActive("/chat")}
-        />
-        <NavItem
-          to="/clubs"
-          icon={<Users size={18} />}
-          label="Clubs"
-          active={isActive("/clubs")}
-        />
+        {inArea ? (
+          // Simplified navbar when inside an area
+          <>
+            <NavItem
+              to="/chat"
+              icon={<MessageCircle size={18} />}
+              label="Private Chat"
+              active={isActive("/chat")}
+            />
+            <NavItem
+              to="/my-events"
+              icon={<Calendar size={18} />}
+              label="My Events"
+              active={isActive("/my-events")}
+            />
+          </>
+        ) : (
+          // Full navbar for normal pages
+          <>
+            <NavItem
+              to="/home"
+              icon={<Home size={18} />}
+              label="Home"
+              active={isActive("/home")}
+            />
+            <NavItem
+              to="/notes"
+              icon={<StickyNote size={18} />}
+              label="Notes"
+              active={isActive("/notes")}
+            />
+            <NavItem
+              to="/chat"
+              icon={<MessageCircle size={18} />}
+              label="Chat"
+              active={isActive("/chat")}
+            />
+            <NavItem
+              to="/clubs"
+              icon={<Users size={18} />}
+              label="Clubs"
+              active={isActive("/clubs")}
+            />
+          </>
+        )}
       </div>
 
       {/* User Section */}
