@@ -19,12 +19,9 @@ function initSocket(server) {
   io.on("connection", async (socket) => {
     const userId = socket.handshake.query.userId;
     if (!userId) {
-      console.log("❌ Connection rejected (no userId)");
       socket.disconnect();
       return;
     }
-
-    console.log(`🟢 User connected: ${socket.id} (${userId})`);
     onlineUsers[userId] = socket.id;
 
     // ========== 🧍 Load Avatar & Position ==========
@@ -53,7 +50,6 @@ function initSocket(server) {
           { $inc: { usersOnline: 1 } }
         );
         if (area) io.to(areaSlug).emit("areaStatusUpdate", { areaId: areaSlug });
-        console.log(`🏠 ${userId} joined area ${areaSlug}`);
 
         // update user area in DB
         await User.findByIdAndUpdate(userId, {
@@ -74,7 +70,6 @@ function initSocket(server) {
           { $inc: { usersOnline: -1 } }
         );
         if (area) io.to(areaSlug).emit("areaStatusUpdate", { areaId: areaSlug });
-        console.log(`🚪 ${userId} left area ${areaSlug}`);
       } catch (err) {
         console.error("leaveArea error:", err.message);
       }
@@ -114,7 +109,6 @@ function initSocket(server) {
     // ========== 🧩 ROOM CHAT ==========
     socket.on("joinRoom", (room) => {
       socket.join(room);
-      console.log(`👥 ${userId} joined room: ${room}`);
     });
 
     socket.on("sendRoomMessage", ({ room, text }) => {
@@ -132,8 +126,6 @@ function initSocket(server) {
       if (!activeClubEvents[eventRoom]) activeClubEvents[eventRoom] = [];
       if (!activeClubEvents[eventRoom].includes(userId))
         activeClubEvents[eventRoom].push(userId);
-
-      console.log(`🎪 ${userId} joined club event ${eventRoom}`);
       io.to(eventRoom).emit("clubEventUpdate", {
         eventRoom,
         participants: activeClubEvents[eventRoom],
@@ -147,8 +139,6 @@ function initSocket(server) {
           (id) => id !== userId
         );
       }
-
-      console.log(`🚪 ${userId} left club event ${eventRoom}`);
       io.to(eventRoom).emit("clubEventUpdate", {
         eventRoom,
         participants: activeClubEvents[eventRoom],
@@ -166,8 +156,6 @@ function initSocket(server) {
 
     // ========== 🔴 DISCONNECT ==========
     socket.on("disconnect", async () => {
-      console.log(`🔴 User disconnected: ${socket.id} (${userId})`);
-
       // Save last known position in DB
       const av = avatars[userId];
       if (av) {

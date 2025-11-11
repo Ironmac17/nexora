@@ -24,12 +24,7 @@ export default function HomePage() {
           {user?.name ? `Hi, ${user.name}` : 'Welcome'}
         </div>
       </div>
-
       <CampusMap onAreaClick={handleAreaClick} userAreaId={lastArea} />
-
-      <div className="mt-4 text-sm text-gray-600">
-        Tip: hover an area to see live status, click to open its dashboard.
-      </div>
     </div>
   );
 }
