@@ -97,13 +97,18 @@ exports.createClubPost = async (req, res) => {
   }
 };
 
+// controllers/clubController.js
 exports.createEvent = async (req, res) => {
   try {
     const { title, description } = req.body;
-    const club = await Club.findById(req.params.id);
-    if (!club) return res.status(404).json({ message: "Club not found" });
-    if (club.admin.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Only club admin can create events" });
+    const club = await Club.findOne({ slug: req.params.id });
+
+    if (!club)
+      return res.status(404).json({ message: "Club not found" });
+    if (club.admin?.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ message: "Only club admin can create events" });
     }
 
     const newEvent = {
@@ -111,7 +116,7 @@ exports.createEvent = async (req, res) => {
       description,
       date: new Date(),
       isLive: true,
-      chatRoom: `${club.name}-event-${Date.now()}`,
+      chatRoom: `${club.slug}-event-${Date.now()}`,
     };
 
     club.events.push(newEvent);
@@ -119,6 +124,9 @@ exports.createEvent = async (req, res) => {
 
     res.status(201).json({ message: "Event created", event: newEvent });
   } catch (err) {
-    res.status(500).json({ message: "Error creating event", error: err.message });
+    res.status(500).json({
+      message: "Error creating event",
+      error: err.message,
+    });
   }
 };
