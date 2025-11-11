@@ -10,7 +10,8 @@ import { Plus, Users, Calendar, MapPin } from "lucide-react";
 export default function AreaDashboard() {
   const { id } = useParams(); // area slug (like "cs-block")
   const navigate = useNavigate();
-  const { socket, joinArea, leaveArea, avatars, moveAvatar } = useSocketContext();
+  const { socket, joinArea, leaveArea, avatars, moveAvatar } =
+    useSocketContext();
   const [status, setStatus] = useState({ events: 0, usersOnline: 0 });
   const [events, setEvents] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -59,16 +60,26 @@ export default function AreaDashboard() {
   const handleAddEvent = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem("nexora_token");
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/club/${id}/event`,
         newEvent,
-        { withCredentials: true }
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`, // ✅ send JWT
+          },
+        }
       );
+
       setShowAddModal(false);
       setNewEvent({ title: "", description: "" });
       fetchArea();
     } catch (err) {
-      console.error(err.message);
+      console.error(
+        "Event creation failed:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -76,7 +87,9 @@ export default function AreaDashboard() {
     <div className="mx-auto max-w-6xl p-6 pt-24">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold capitalize">{id.replace("-", " ")}</h1>
+          <h1 className="text-3xl font-semibold capitalize">
+            {id.replace("-", " ")}
+          </h1>
           <p className="text-sm text-white-600">
             Users online: {status.usersOnline} • Events: {status.events}
           </p>
@@ -108,7 +121,9 @@ export default function AreaDashboard() {
           </div>
 
           {events.length === 0 ? (
-            <p className="text-gray-500 text-sm">No ongoing events here right now.</p>
+            <p className="text-gray-500 text-sm">
+              No ongoing events here right now.
+            </p>
           ) : (
             <ul className="space-y-3">
               {events.map((ev, i) => (

@@ -1,36 +1,15 @@
+// models/Club.js
 const mongoose = require("mongoose");
 
 const clubSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      required: true,
-    },
-    category: {
-      type: String,
-      default: "General",
-    },
-    logoUrl: {
-      type: String,
-      default: null,
-    },
-    admin: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    members: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+    name: { type: String, required: true, unique: true, trim: true },
+    slug: { type: String, unique: true }, // 👈 new
+    description: { type: String, required: true },
+    category: { type: String, default: "General" },
+    logoUrl: { type: String, default: null },
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     events: [
       {
         title: { type: String, required: true },
@@ -50,5 +29,13 @@ const clubSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ✅ Automatically create slug before saving
+clubSchema.pre("save", function (next) {
+  if (!this.slug) {
+    this.slug = this.name.toLowerCase().replace(/\s+/g, "-");
+  }
+  next();
+});
 
 module.exports = mongoose.model("Club", clubSchema);
