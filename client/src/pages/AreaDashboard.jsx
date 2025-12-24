@@ -1,4 +1,3 @@
-// src/pages/AreaDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,10 +6,10 @@ import axios from "axios";
 import { Plus, Users, Calendar, MapPin } from "lucide-react";
 
 export default function AreaDashboard() {
-  const { id } = useParams(); // area slug
+  const { id } = useParams();
+  const navigate = useNavigate();
   const areaName = id ? id.replace(/-/g, " ") : "Area";
 
-  const navigate = useNavigate();
   const { socket, joinArea, leaveArea, avatars, moveAvatar } =
     useSocketContext();
 
@@ -22,7 +21,6 @@ export default function AreaDashboard() {
   const [newEvent, setNewEvent] = useState({ title: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
 
-  /* ---------- fetch area ---------- */
   const fetchArea = async () => {
     try {
       const res = await axios.get(
@@ -41,7 +39,6 @@ export default function AreaDashboard() {
     }
   };
 
-  /* ---------- lifecycle ---------- */
   useEffect(() => {
     if (!id) return;
 
@@ -60,7 +57,6 @@ export default function AreaDashboard() {
     };
   }, [id, socket]);
 
-  /* ---------- avatar move ---------- */
   const handleMapClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     moveAvatar(
@@ -70,7 +66,6 @@ export default function AreaDashboard() {
     );
   };
 
-  /* ---------- add event ---------- */
   const handleAddEvent = async (e) => {
     e.preventDefault();
     if (!newEvent.title.trim()) return;
@@ -99,59 +94,98 @@ export default function AreaDashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-6 pt-24">
-      {/* ---------- HEADER ---------- */}
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-7xl px-6 pt-24 pb-10">
+      
+      <div className="mb-10 flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold capitalize text-white">
+          <h1 className="text-4xl font-bold capitalize text-white">
             {areaName}
           </h1>
-          <p className="text-sm text-slate-300">
-            Users online: {status.usersOnline} • Events: {status.events}
-          </p>
+
+          <div className="mt-3 flex gap-3">
+            <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-300">
+              🟢 {status.usersOnline} online
+            </span>
+            <span className="rounded-full bg-blue-500/20 px-3 py-1 text-sm text-blue-300">
+              📅 {status.events} events
+            </span>
+          </div>
         </div>
+
         <button
           onClick={() => navigate("/")}
-          className="rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
         >
           ← Back to Campus
         </button>
       </div>
 
-      {/* ---------- GRID ---------- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* ---------- LEFT PANEL ---------- */}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
           layout
-          className="rounded-2xl bg-white/90 p-5 shadow-lg backdrop-blur"
+          className="lg:col-span-2 relative h-[520px] overflow-hidden rounded-3xl bg-slate-100 shadow-xl"
+          onClick={handleMapClick}
         >
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-xl font-semibold">
-              <Calendar size={18} /> Current Events
+          <img
+            src="/campusMap.png"
+            alt="Area Map"
+            className="absolute inset-0 h-full w-full object-cover opacity-80"
+          />
+
+          {Object.entries(avatars)
+            .filter(([_, a]) => a.areaSlug === id)
+            .map(([uid, a]) => (
+              <motion.div
+                key={uid}
+                className="absolute flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-semibold text-white shadow-lg"
+                animate={{ left: a.x, top: a.y }}
+                transition={{ type: "spring", stiffness: 200, damping: 18 }}
+                style={{ backgroundColor: a.color }}
+              >
+                {a.name.slice(-2)}
+              </motion.div>
+            ))}
+
+          {Object.keys(avatars).length <= 1 && (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
+              Click anywhere to move • Invite others to join this area
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div
+          layout
+          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-lg"
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Calendar size={18} /> Events
             </h2>
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
             >
-              <Plus size={14} /> Add Event
+              <Plus size={14} /> Add
             </button>
           </div>
 
-          {/* Events list */}
           {loadingEvents ? (
             <p className="text-sm text-gray-400">Loading events…</p>
           ) : events.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              No ongoing events right now.
+            <p className="rounded-lg bg-slate-50 p-3 text-sm text-gray-500">
+              No events right now. Start one?
             </p>
           ) : (
             <ul className="space-y-3">
               {events.map((ev, i) => (
                 <li
                   key={i}
-                  className="rounded-lg border-l-4 border-blue-500 bg-white p-3 shadow-sm"
+                  className="rounded-xl border border-blue-200 bg-blue-50 p-3"
                 >
-                  <h3 className="font-medium">{ev.title}</h3>
+                  <h3 className="font-semibold flex items-center gap-2">
+                    🔥 {ev.title}
+                  </h3>
                   <p className="mt-1 text-sm text-gray-600">
                     {ev.description}
                   </p>
@@ -160,10 +194,9 @@ export default function AreaDashboard() {
             </ul>
           )}
 
-          {/* Users online */}
           <div className="mt-6">
-            <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold">
-              <Users size={18} /> Users Online
+            <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
+              <Users size={18} /> People here
             </h2>
 
             <div className="flex flex-wrap gap-2">
@@ -185,36 +218,8 @@ export default function AreaDashboard() {
             </div>
           </div>
         </motion.div>
-
-        {/* ---------- RIGHT PANEL (MAP) ---------- */}
-        <motion.div
-          layout
-          className="relative h-[420px] overflow-hidden rounded-2xl bg-slate-100 shadow-lg"
-          onClick={handleMapClick}
-        >
-          <img
-            src="/campusMap.png"
-            alt="Area Map"
-            className="absolute inset-0 h-full w-full object-cover opacity-70"
-          />
-
-          {Object.entries(avatars)
-            .filter(([_, a]) => a.areaSlug === id)
-            .map(([uid, a]) => (
-              <motion.div
-                key={uid}
-                className="absolute flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-medium text-white shadow"
-                animate={{ left: a.x, top: a.y }}
-                transition={{ type: "spring", stiffness: 180, damping: 18 }}
-                style={{ backgroundColor: a.color }}
-              >
-                {a.name.slice(-2)}
-              </motion.div>
-            ))}
-        </motion.div>
       </div>
 
-      {/* ---------- ADD EVENT MODAL ---------- */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -224,12 +229,12 @@ export default function AreaDashboard() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
             >
-              <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
                 <MapPin size={18} /> Add Event in {areaName}
               </h2>
 
@@ -252,7 +257,8 @@ export default function AreaDashboard() {
                   }
                   className="w-full rounded-md border px-3 py-2 text-sm"
                 />
-                <div className="flex justify-end gap-3">
+
+                <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}

@@ -100,30 +100,39 @@ exports.createClubPost = async (req, res) => {
 exports.createEvent = async (req, res) => {
   try {
     const { title, description } = req.body;
+    const { id: slug } = req.params; 
+    const club = await Club.findOne({ slug });
 
-    // find by ID instead of slug
-    const club = await Club.findById({slug: req.params.id});
-
-    if (!club)
+    if (!club) {
       return res.status(404).json({ message: "Club not found" });
-
-    if (club.admin.toString() !== req.user.id)
-      return res.status(403).json({ message: "Only club admin can create events" });
-
+    }
+    
+    if (club.admin.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ message: "Only club admin can create events" });
+    }
+    
     const newEvent = {
       title,
       description,
       date: new Date(),
       isLive: true,
-      chatRoom: `${club.slug || club._id}-event-${Date.now()}`,
+      chatRoom: `${club.slug}-event-${Date.now()}`,
     };
 
     club.events.push(newEvent);
-    await club.save();
 
-    res.status(201).json({ message: "Event created", event: newEvent });
+    await club.save();
+    res.status(201).json({
+      message: "Event created",
+      event: newEvent,
+    });
   } catch (err) {
     console.error("❌ Error creating event:", err);
-    res.status(500).json({ message: "Error creating event", error: err.message });
+    res.status(500).json({
+      message: "Error creating event",
+      error: err.message,
+    });
   }
 };

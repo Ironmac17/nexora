@@ -30,7 +30,6 @@ const clubSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Automatically create slug before saving
 clubSchema.pre("save", function (next) {
   if (!this.slug) {
     this.slug = this.name.toLowerCase().replace(/\s+/g, "-");
