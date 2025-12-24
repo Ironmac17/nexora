@@ -3,37 +3,48 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSocketContext } from "../context/SocketContext";
-import { getAreaStatus } from "../services/areaService";
 import axios from "axios";
 import { Plus, Users, Calendar, MapPin } from "lucide-react";
 
 export default function AreaDashboard() {
-  const { id } = useParams(); // area slug (like "cs-block")
+  const { id } = useParams(); // area slug
+  const areaName = id ? id.replace(/-/g, " ") : "Area";
+
   const navigate = useNavigate();
   const { socket, joinArea, leaveArea, avatars, moveAvatar } =
     useSocketContext();
+
   const [status, setStatus] = useState({ events: 0, usersOnline: 0 });
   const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", description: "" });
+  const [submitting, setSubmitting] = useState(false);
 
-  // Fetch area details including events
+  /* ---------- fetch area ---------- */
   const fetchArea = async () => {
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/area/${id}`
       );
+
       setEvents(res.data.events || []);
       setStatus({
-        usersOnline: res.data.usersOnline,
+        usersOnline: res.data.usersOnline || 0,
         events: res.data.events?.length || 0,
       });
     } catch (err) {
       console.error(err.message);
+    } finally {
+      setLoadingEvents(false);
     }
   };
 
+  /* ---------- lifecycle ---------- */
   useEffect(() => {
+    if (!id) return;
+
     joinArea(id);
     fetchArea();
 
@@ -42,33 +53,38 @@ export default function AreaDashboard() {
     };
 
     socket?.on("areaStatusUpdate", handleUpdate);
+
     return () => {
       leaveArea(id);
       socket?.off("areaStatusUpdate", handleUpdate);
     };
   }, [id, socket]);
 
-  // Move avatar inside area
+  /* ---------- avatar move ---------- */
   const handleMapClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    moveAvatar(x, y, id);
+    moveAvatar(
+      e.clientX - rect.left,
+      e.clientY - rect.top,
+      id
+    );
   };
 
-  // Add event
+  /* ---------- add event ---------- */
   const handleAddEvent = async (e) => {
     e.preventDefault();
+    if (!newEvent.title.trim()) return;
+
     try {
+      setSubmitting(true);
       const token = localStorage.getItem("nexora_token");
+
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/club/${id}/event`,
         newEvent,
         {
+          headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${token}`, // ✅ send JWT
-          },
         }
       );
 
@@ -76,39 +92,40 @@ export default function AreaDashboard() {
       setNewEvent({ title: "", description: "" });
       fetchArea();
     } catch (err) {
-      console.error(
-        "Event creation failed:",
-        err.response?.data || err.message
-      );
+      console.error("Event creation failed:", err.response?.data || err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="mx-auto max-w-6xl p-6 pt-24">
-      <div className="mb-4 flex items-center justify-between">
+      {/* ---------- HEADER ---------- */}
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold capitalize">
-            {id.replace("-", " ")}
+          <h1 className="text-3xl font-bold capitalize text-white">
+            {areaName}
           </h1>
-          <p className="text-sm text-white-600">
+          <p className="text-sm text-slate-300">
             Users online: {status.usersOnline} • Events: {status.events}
           </p>
         </div>
         <button
           onClick={() => navigate("/")}
-          className="rounded-md bg-blue-600 px-3 py-1 text-sm hover:bg-blue-900"
+          className="rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
         >
           ← Back to Campus
         </button>
       </div>
 
+      {/* ---------- GRID ---------- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left side - Area Info */}
+        {/* ---------- LEFT PANEL ---------- */}
         <motion.div
           layout
-          className="rounded-xl border bg-white/80 p-5 shadow-md backdrop-blur-sm"
+          className="rounded-2xl bg-white/90 p-5 shadow-lg backdrop-blur"
         >
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-xl font-semibold">
               <Calendar size={18} /> Current Events
             </h2>
@@ -120,19 +137,22 @@ export default function AreaDashboard() {
             </button>
           </div>
 
-          {events.length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              No ongoing events here right now.
+          {/* Events list */}
+          {loadingEvents ? (
+            <p className="text-sm text-gray-400">Loading events…</p>
+          ) : events.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No ongoing events right now.
             </p>
           ) : (
             <ul className="space-y-3">
               {events.map((ev, i) => (
                 <li
                   key={i}
-                  className="rounded-lg border p-3 shadow-sm hover:shadow transition bg-white/70"
+                  className="rounded-lg border-l-4 border-blue-500 bg-white p-3 shadow-sm"
                 >
                   <h3 className="font-medium">{ev.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                  <p className="mt-1 text-sm text-gray-600">
                     {ev.description}
                   </p>
                 </li>
@@ -140,10 +160,12 @@ export default function AreaDashboard() {
             </ul>
           )}
 
+          {/* Users online */}
           <div className="mt-6">
-            <h2 className="flex items-center gap-2 text-xl font-semibold mb-2">
+            <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold">
               <Users size={18} /> Users Online
             </h2>
+
             <div className="flex flex-wrap gap-2">
               {Object.entries(avatars)
                 .filter(([_, a]) => a.areaSlug === id)
@@ -164,10 +186,10 @@ export default function AreaDashboard() {
           </div>
         </motion.div>
 
-        {/* Right side - Map / Live Avatars */}
+        {/* ---------- RIGHT PANEL (MAP) ---------- */}
         <motion.div
           layout
-          className="relative h-[420px] w-full overflow-hidden rounded-xl border bg-slate-100 shadow-md"
+          className="relative h-[420px] overflow-hidden rounded-2xl bg-slate-100 shadow-lg"
           onClick={handleMapClick}
         >
           <img
@@ -175,14 +197,15 @@ export default function AreaDashboard() {
             alt="Area Map"
             className="absolute inset-0 h-full w-full object-cover opacity-70"
           />
+
           {Object.entries(avatars)
             .filter(([_, a]) => a.areaSlug === id)
             .map(([uid, a]) => (
               <motion.div
                 key={uid}
-                className="absolute flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-medium text-white shadow"
+                className="absolute flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-medium text-white shadow"
                 animate={{ left: a.x, top: a.y }}
-                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                transition={{ type: "spring", stiffness: 180, damping: 18 }}
                 style={{ backgroundColor: a.color }}
               >
                 {a.name.slice(-2)}
@@ -191,58 +214,58 @@ export default function AreaDashboard() {
         </motion.div>
       </div>
 
-      {/* Add Event Modal */}
+      {/* ---------- ADD EVENT MODAL ---------- */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
           >
             <motion.div
+              className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
             >
-              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <MapPin size={18} /> Add Event in {id.replace("-", " ")}
+              <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+                <MapPin size={18} /> Add Event in {areaName}
               </h2>
+
               <form onSubmit={handleAddEvent} className="space-y-3">
                 <input
-                  type="text"
                   required
                   placeholder="Event title"
                   value={newEvent.title}
                   onChange={(e) =>
                     setNewEvent({ ...newEvent, title: e.target.value })
                   }
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring"
+                  className="w-full rounded-md border px-3 py-2 text-sm"
                 />
                 <textarea
                   rows={3}
-                  required
                   placeholder="Description"
                   value={newEvent.description}
                   onChange={(e) =>
                     setNewEvent({ ...newEvent, description: e.target.value })
                   }
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring"
+                  className="w-full rounded-md border px-3 py-2 text-sm"
                 />
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="rounded-md border px-3 py-1 text-sm hover:bg-gray-100"
+                    className="rounded-md border px-3 py-1 text-sm"
                   >
                     Cancel
                   </button>
                   <button
+                    disabled={submitting}
                     type="submit"
-                    className="rounded-md bg-blue-600 px-4 py-1 text-sm text-white hover:bg-blue-700"
+                    className="rounded-md bg-blue-600 px-4 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
                   >
-                    Add Event
+                    {submitting ? "Adding…" : "Add Event"}
                   </button>
                 </div>
               </form>

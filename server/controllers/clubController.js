@@ -97,15 +97,12 @@ exports.createClubPost = async (req, res) => {
   }
 };
 
-// controllers/clubController.js
-// controllers/clubController.js
-// controllers/clubController.js
 exports.createEvent = async (req, res) => {
   try {
     const { title, description } = req.body;
 
     // find by ID instead of slug
-    const club = await Club.findById(req.params.id);
+    const club = await Club.findById({slug: req.params.id});
 
     if (!club)
       return res.status(404).json({ message: "Club not found" });

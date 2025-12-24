@@ -42,12 +42,6 @@ export default function Navbar() {
           // Simplified navbar when inside an area
           <>
             <NavItem
-              to="/chat"
-              icon={<MessageCircle size={18} />}
-              label="Private Chat"
-              active={isActive("/chat")}
-            />
-            <NavItem
               to="/my-events"
               icon={<Calendar size={18} />}
               label="My Events"
