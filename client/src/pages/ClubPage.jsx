@@ -1,17 +1,24 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useSocketContext } from "../context/SocketContext";
 import { getClubById, createClubPost } from "../services/clubService";
 import { Loader2, SendHorizonal } from "lucide-react";
 
 export default function ClubPage() {
   const { id } = useParams();
   const { token, user } = useAuth();
+  const { socket } = useSocketContext();
   const [club, setClub] = useState(null);
   const [loading, setLoading] = useState(true);
   const [postContent, setPostContent] = useState("");
   const [postTitle, setPostTitle] = useState("");
+  const [eventMessages, setEventMessages] = useState({});
+  const [chatText, setChatText] = useState("");
+  const messagesEndRef = useRef(null);
+
+  const liveEvents = club?.events?.filter((e) => e.isLive) || [];
 
   const fetchClub = async () => {
     try {
@@ -42,6 +49,58 @@ export default function ClubPage() {
     fetchClub();
   }, [id]);
 
+  useEffect(() => {
+    if (!socket || !club) return;
+
+    liveEvents.forEach((event) => {
+      const eventRoom = event._id; // assuming event has _id
+      socket.emit("joinClubEvent", { eventRoom });
+
+      socket.on("receiveClubMessage", (msg) => {
+        if (msg.eventRoom === eventRoom) {
+          setEventMessages((prev) => ({
+            ...prev,
+            [eventRoom]: [...(prev[eventRoom] || []), msg],
+          }));
+        }
+      });
+    });
+
+    return () => {
+      liveEvents.forEach((event) => {
+        socket.emit("leaveClubEvent", { eventRoom: event._id });
+      });
+      socket.off("receiveClubMessage");
+    };
+  }, [socket, club]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [eventMessages]);
+
+  const handleSendChat = (eventRoom) => (e) => {
+    e.preventDefault();
+    if (!chatText.trim()) return;
+
+    const localMessage = {
+      sender: user,
+      text: chatText,
+      eventRoom,
+      createdAt: new Date().toISOString(),
+    };
+
+    setEventMessages((prev) => ({
+      ...prev,
+      [eventRoom]: [...(prev[eventRoom] || []), localMessage],
+    }));
+    setChatText("");
+
+    socket.emit("sendClubMessage", {
+      eventRoom,
+      text: chatText,
+    });
+  };
+
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -55,7 +114,7 @@ export default function ClubPage() {
   const isMember = club.members.some((m) => m._id === user?.id);
 
   return (
-    <motion.div
+    <div
       className="min-h-screen bg-background text-textMain px-6 py-24"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -68,7 +127,7 @@ export default function ClubPage() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column: Posts */}
-        <div className="lg:col-span-2 bg-surface/40 border border-surface/60 p-5 rounded-xl shadow-md">
+        <div className="bg-surface/40 border border-surface/60 p-5 rounded-xl shadow-md">
           <h2 className="text-lg font-semibold mb-3 text-accent">Posts</h2>
 
           {isMember && (
@@ -120,6 +179,66 @@ export default function ClubPage() {
           )}
         </div>
 
+        {/* Middle Column: Live Event Chat */}
+        {liveEvents.length > 0 && (
+          <div className="bg-surface/40 border border-surface/60 p-5 rounded-xl shadow-md">
+            <h2 className="text-lg font-semibold mb-3 text-accent">
+              💬 Live Event Chat
+            </h2>
+            {liveEvents.map((event) => (
+              <div key={event._id} className="mb-4">
+                <h3 className="text-sm font-semibold text-accent">
+                  {event.title}
+                </h3>
+                <div className="h-48 overflow-y-auto bg-background/50 rounded-lg p-2 space-y-2">
+                  {(eventMessages[event._id] || []).map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex ${
+                        msg.sender?._id === user?.id
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[70%] p-2 rounded-lg text-sm ${
+                          msg.sender?._id === user?.id
+                            ? "bg-accent text-background"
+                            : "bg-surface text-textMain"
+                        }`}
+                      >
+                        <p>{msg.text}</p>
+                        <span className="text-xs opacity-70">
+                          {new Date(msg.createdAt).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+                <form
+                  onSubmit={handleSendChat(event._id)}
+                  className="flex gap-2 mt-2"
+                >
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={chatText}
+                    onChange={(e) => setChatText(e.target.value)}
+                    className="flex-1 p-2 rounded-lg bg-background border border-surface/60 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-accent text-background px-3 py-2 rounded-lg"
+                  >
+                    <SendHorizonal className="h-4 w-4" />
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Right Column: Members & Events */}
         <div className="bg-surface/40 border border-surface/60 p-5 rounded-xl shadow-md space-y-5">
           <div>
@@ -158,6 +277,6 @@ export default function ClubPage() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

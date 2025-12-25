@@ -1,12 +1,23 @@
 import { motion } from "framer-motion";
-import { LogOut, Home, MessageCircle, StickyNote, Users, Calendar } from "lucide-react";
+import {
+  LogOut,
+  Home,
+  MessageCircle,
+  StickyNote,
+  Users,
+  Calendar,
+  User,
+} from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useState } from "react";
+import AvatarCustomizer from "../avatar/AvatarCustomizer";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -22,8 +33,7 @@ export default function Navbar() {
 
   return (
     <motion.nav
-      className="fixed top-0 left-0 right-0 bg-surface/90 backdrop-blur-lg border-b border-surface/50 
-                 text-textMain flex justify-between items-center px-6 sm:px-10 py-3 z-50 shadow-lg"
+      className="fixed top-0 left-0 right-0 glass text-white flex justify-between items-center px-6 sm:px-10 py-3 z-50"
       initial={{ y: -30, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -31,7 +41,7 @@ export default function Navbar() {
       {/* Logo */}
       <Link
         to="/home"
-        className="text-accent text-2xl font-bold tracking-wide hover:opacity-90 transition"
+        className="text-transparent bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-2xl font-bold tracking-wide hover:scale-105 transition-all duration-300"
       >
         Nexora
       </Link>
@@ -82,17 +92,43 @@ export default function Navbar() {
       {/* User Section */}
       <div className="flex items-center gap-4">
         {user && (
-          <div className="text-sm text-textSub hidden sm:block truncate max-w-[120px]">
+          <div className="text-sm text-gray-300 hidden sm:block truncate max-w-[120px]">
             {user.fullName}
           </div>
         )}
         <button
+          onClick={() => setShowAvatarModal(true)}
+          className="text-purple-400 hover:text-purple-300 flex items-center gap-1 text-sm transition-all hover:scale-110"
+        >
+          <User size={18} />
+        </button>
+        <button
           onClick={handleLogout}
-          className="text-red-400 hover:text-red-500 flex items-center gap-1 text-sm transition"
+          className="text-red-400 hover:text-red-300 flex items-center gap-1 text-sm transition-all hover:scale-110"
         >
           <LogOut size={18} /> Logout
         </button>
       </div>
+
+      {showAvatarModal && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowAvatarModal(false)}
+        >
+          <motion.div
+            className="glass p-6 rounded-xl max-w-md w-full mx-4"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AvatarCustomizer onClose={() => setShowAvatarModal(false)} />
+          </motion.div>
+        </motion.div>
+      )}
     </motion.nav>
   );
 }
@@ -102,11 +138,11 @@ function NavItem({ to, icon, label, active }) {
   return (
     <Link
       to={to}
-      className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200
+      className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-300 hover:scale-105
         ${
           active
-            ? "text-accent bg-surface/70 shadow-inner"
-            : "hover:text-accent hover:bg-surface/40"
+            ? "text-purple-400 bg-white/10 shadow-lg glow-purple"
+            : "text-gray-300 hover:text-purple-400 hover:bg-white/5"
         }`}
     >
       {icon}

@@ -10,7 +10,7 @@ let activeClubEvents = {}; // { clubEventRoom: [userIds...] }
 function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "*",
+      origin: "*",
       methods: ["GET", "POST"],
       allowedHeaders: ["Content-Type", "Authorization"],
     },
@@ -91,7 +91,7 @@ function initSocket(server) {
           y,
           lastUpdated: new Date(),
         },
-      }).catch(() => {});
+      }).catch(() => { });
     });
 
     // ========== 💬 PRIVATE MESSAGING ==========
@@ -166,7 +166,7 @@ function initSocket(server) {
             y: av.y,
             lastUpdated: new Date(),
           },
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // Remove user from memory

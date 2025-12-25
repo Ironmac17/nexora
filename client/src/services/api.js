@@ -8,7 +8,7 @@ const api = axios.create({
 
 // Automatically attach token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("nexoraToken");
+  const token = localStorage.getItem("nexora_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

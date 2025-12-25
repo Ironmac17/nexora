@@ -30,22 +30,29 @@ export default function LoginPage() {
   };
 
   return (
-    <motion.div
-      className="min-h-screen flex flex-col items-center justify-center bg-background text-textMain px-6"
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-md border border-surface/50">
-        <h1 className="text-2xl font-bold mb-6 text-center text-accent">Welcome Back</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 px-6">
+      <motion.div
+        className="glass p-8 rounded-2xl w-full max-w-md border border-white/10"
+        initial={{ opacity: 0, y: 30, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-transparent bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-gray-400">Sign in to your Nexora account</p>
+        </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block mb-1 text-sm text-textSub">Email</label>
+            <label className="block mb-2 text-sm text-gray-300 font-medium">
+              Email
+            </label>
             <input
               type="email"
-              className="w-full px-4 py-2 rounded-md bg-background border border-surface/70 focus:outline-none focus:ring-1 focus:ring-accent text-textMain"
+              className="input-field w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -53,34 +60,60 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-textSub">Password</label>
+            <label className="block mb-2 text-sm text-gray-300 font-medium">
+              Password
+            </label>
             <input
               type="password"
-              className="w-full px-4 py-2 rounded-md bg-background border border-surface/70 focus:outline-none focus:ring-1 focus:ring-accent text-textMain"
+              className="input-field w-full"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
 
-          {error && <p className="text-error text-sm text-center">{error}</p>}
+          {error && (
+            <motion.p
+              className="text-red-400 text-sm text-center bg-red-500/10 rounded-lg p-2"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              {error}
+            </motion.p>
+          )}
 
-          <button
+          <motion.button
             type="submit"
             disabled={loading}
-            className="w-full py-2 mt-3 bg-accent text-background font-semibold rounded-md hover:opacity-90 flex items-center justify-center"
+            className="btn-primary w-full mt-6 flex items-center justify-center disabled:opacity-50"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {loading ? <Loader2 className="animate-spin mr-2" /> : "Login"}
-          </button>
+            {loading ? (
+              <Loader2 className="animate-spin mr-2" size={18} />
+            ) : (
+              "Sign In"
+            )}
+          </motion.button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-textSub">
-          <Link to="/forgot-password" className="hover:text-accent">Forgot password?</Link>
+        <div className="mt-6 text-center text-sm text-gray-400">
+          <Link
+            to="/forgot-password"
+            className="text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            Forgot password?
+          </Link>
           <br />
-          Don’t have an account?{" "}
-          <Link to="/register" className="text-accent hover:underline">Sign Up</Link>
+          Don't have an account?{" "}
+          <Link
+            to="/register"
+            className="text-blue-400 hover:text-blue-300 transition-colors font-medium"
+          >
+            Sign Up
+          </Link>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }

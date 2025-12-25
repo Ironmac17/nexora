@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Palette, Shirt, Sparkles } from "lucide-react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 
-export default function AvatarCustomizer() {
+export default function AvatarCustomizer({ onClose }) {
   const { user, token } = useAuth();
   const [avatar, setAvatar] = useState(user?.avatar || {});
   const [saving, setSaving] = useState(false);
@@ -21,6 +20,7 @@ export default function AvatarCustomizer() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert("Avatar updated successfully!");
+      onClose();
     } catch (err) {
       alert("Error updating avatar");
     } finally {
@@ -29,11 +29,13 @@ export default function AvatarCustomizer() {
   };
 
   return (
-    <motion.div
-      className="p-6 bg-surface rounded-xl shadow-md text-center w-[400px]"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
+    <div className="p-6 bg-surface rounded-xl shadow-md text-center w-[400px] relative">
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 text-textSub hover:text-textMain"
+      >
+        ✕
+      </button>
       <h2 className="text-lg font-semibold text-accent mb-4">
         Customize Your Avatar
       </h2>
@@ -111,6 +113,6 @@ export default function AvatarCustomizer() {
       >
         {saving ? "Saving..." : "Save Avatar"}
       </button>
-    </motion.div>
+    </div>
   );
 }
