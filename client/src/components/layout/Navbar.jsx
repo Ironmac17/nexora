@@ -7,6 +7,7 @@ import {
   Users,
   Calendar,
   User,
+  MapPin,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -24,12 +25,17 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  const isActive = (path) =>
-    location.pathname === path ||
-    (path === "/clubs" && location.pathname.startsWith("/clubs"));
-
-  // detect if inside area dashboard
+  // detect if inside area dashboard and extract areaId
   const inArea = location.pathname.startsWith("/area/");
+  const areaId = inArea ? location.pathname.split("/")[2] : null;
+
+  const isActive = (path) => {
+    if (inArea) {
+      // For area-specific routes, check if the current path ends with the feature
+      return location.pathname.includes(path);
+    }
+    return location.pathname === path;
+  };
 
   return (
     <motion.nav
@@ -46,44 +52,52 @@ export default function Navbar() {
         Nexora
       </Link>
 
+      {/* Area Indicator */}
+      {inArea && areaId && (
+        <div className="flex items-center gap-2 text-sm text-gray-300 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+          <MapPin size={14} className="text-purple-400" />
+          <span className="capitalize">{areaId.replace(/-/g, " ")}</span>
+        </div>
+      )}
+
       {/* Navigation Links */}
       <div className="flex gap-6 items-center text-sm font-medium">
-        {inArea ? (
-          // Simplified navbar when inside an area
+        {inArea && areaId ? (
+          // Area-specific navbar when inside an area
           <>
             <NavItem
-              to="/my-events"
-              icon={<Calendar size={18} />}
-              label="My Events"
-              active={isActive("/my-events")}
+              to={`/area/${areaId}`}
+              icon={<Home size={18} />}
+              label="Area Home"
+              active={location.pathname === `/area/${areaId}`}
+            />
+            <NavItem
+              to={`/area/${areaId}/notes`}
+              icon={<StickyNote size={18} />}
+              label="Notes"
+              active={isActive("/notes")}
+            />
+            <NavItem
+              to={`/area/${areaId}/chat`}
+              icon={<MessageCircle size={18} />}
+              label="Chat"
+              active={isActive("/chat")}
+            />
+            <NavItem
+              to={`/area/${areaId}/clubs`}
+              icon={<Users size={18} />}
+              label="Clubs"
+              active={isActive("/clubs")}
             />
           </>
         ) : (
-          // Full navbar for normal pages
+          // Global navbar for home and other pages
           <>
             <NavItem
               to="/home"
               icon={<Home size={18} />}
               label="Home"
               active={isActive("/home")}
-            />
-            <NavItem
-              to="/notes"
-              icon={<StickyNote size={18} />}
-              label="Notes"
-              active={isActive("/notes")}
-            />
-            <NavItem
-              to="/chat"
-              icon={<MessageCircle size={18} />}
-              label="Chat"
-              active={isActive("/chat")}
-            />
-            <NavItem
-              to="/clubs"
-              icon={<Users size={18} />}
-              label="Clubs"
-              active={isActive("/clubs")}
             />
           </>
         )}

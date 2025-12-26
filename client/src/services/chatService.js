@@ -27,3 +27,11 @@ export const getPrivateMessages = async (token, userId) => {
   });
   return data;
 };
+
+// ✅ Delete a message
+export const deleteMessage = async (token, messageId) => {
+  const { data } = await api.delete(`/chat/${messageId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+};

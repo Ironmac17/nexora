@@ -64,3 +64,25 @@ exports.getPrivateMessages = async (req, res) => {
     res.status(500).json({ message: "Error fetching private messages", error: err.message });
   }
 };
+
+exports.deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    if (message.sender.toString() !== req.user.id) {
+      return res.status(403).json({ message: "You can only delete your own messages" });
+    }
+
+    await Message.findByIdAndDelete(messageId);
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error deleting message", error: err.message });
+  }
+};

@@ -8,6 +8,7 @@ const clubSchema = new mongoose.Schema(
     description: { type: String, required: true },
     category: { type: String, default: "General" },
     logoUrl: { type: String, default: null },
+    areaId: { type: String, required: true }, // Area-specific clubs
     admin: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     events: [
@@ -21,8 +22,10 @@ const clubSchema = new mongoose.Schema(
     ],
     posts: [
       {
+        _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
         title: String,
         content: String,
+        author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         createdAt: { type: Date, default: Date.now },
       },
     ],

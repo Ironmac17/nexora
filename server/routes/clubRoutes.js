@@ -7,7 +7,9 @@ const {
   joinClub,
   leaveClub,
   createClubPost,
+  deleteClubPost,
   createEvent,
+  deleteClub,
 } = require("../controllers/clubController");
 
 const router = express.Router();
@@ -20,7 +22,9 @@ router.get("/:id", getClubById);
 router.post("/", protect, createClub);
 router.post("/join/:id", protect, joinClub);
 router.post("/leave/:id", protect, leaveClub);
+router.delete("/:id", protect, deleteClub);
 router.post("/:id/post", protect, createClubPost);
+router.delete("/:id/post/:postId", protect, deleteClubPost);
 router.post("/:id/event", protect, createEvent);
 
 module.exports = router;

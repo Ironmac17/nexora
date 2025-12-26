@@ -1,21 +1,31 @@
 import { useEffect, useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { useParams } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useSocketContext } from "../context/SocketContext";
-import { getMessagesByRoom, sendRoomMessage } from "../services/chatService";
-import { Loader2, SendHorizonal } from "lucide-react";
+import {
+  getMessagesByRoom,
+  sendRoomMessage,
+  deleteMessage,
+} from "../services/chatService";
+import { Loader2, SendHorizonal, Trash2 } from "lucide-react";
 
 export default function ChatPage() {
   const { user, token } = useAuth();
+  const { areaId } = useParams();
   const { socket } = useSocketContext();
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
-  const room = "campus";
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState(null);
+
+  const room = `area-${areaId}`;
   const messagesEndRef = useRef(null);
 
-  // Fetch old messages
+  /* ---------- FETCH OLD MESSAGES ---------- */
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -29,29 +39,32 @@ export default function ChatPage() {
       }
     };
     fetchMessages();
-  }, [token]);
+  }, [token, room]);
 
-  // Scroll to bottom when messages update
+  /* ---------- SOCKET ---------- */
+  useEffect(() => {
+    if (!socket || !user?.id) return;
+
+    socket.emit("join-room", { room });
+
+    const onReceive = (msg) => {
+      if (msg.sender?._id === user.id) return;
+      setMessages((prev) => [...prev, msg]);
+    };
+
+    socket.on("receive-room-message", onReceive);
+
+    return () => {
+      socket.off("receive-room-message", onReceive);
+    };
+  }, [socket, user?.id, room]);
+
+  /* ---------- SCROLL ---------- */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Socket listeners
-  useEffect(() => {
-    if (!socket) return;
-    socket.emit("join-room", { userId: user?.id, room });
-
-    socket.on("receive-room-message", (msg) => {
-      // avoid duplicate if user already sent this locally
-      if (msg.sender?._id === user?.id) return;
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    return () => {
-      socket.off("receive-room-message");
-    };
-  }, [socket, user?.id]);
-
+  /* ---------- SEND ---------- */
   const handleSend = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
@@ -67,124 +80,140 @@ export default function ChatPage() {
 
     try {
       await sendRoomMessage(token, room, text);
-      socket.emit("send-room-message", {
-        room,
-        sender: user,
-        text,
-      });
+      socket.emit("send-room-message", { room, text });
     } catch (err) {
       console.error("Error sending message:", err);
     }
   };
 
+  /* ---------- DELETE ---------- */
+  const handleDeleteMessage = (messageId) => {
+    setMessageToDelete(messageId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!messageToDelete) return;
+
+    try {
+      await deleteMessage(token, messageToDelete);
+      setMessages((prev) =>
+        prev.filter((msg) => msg._id !== messageToDelete)
+      );
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    } finally {
+      setShowDeleteModal(false);
+      setMessageToDelete(null);
+    }
+  };
+
+  /* ---------- RENDER ---------- */
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 text-white px-4 pb-20 pt-24">
+
+      {/* HEADER */}
       <motion.div
         className="text-center mb-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
       >
-        <h1 className="text-3xl font-bold text-transparent bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text mb-2">
-          💬 Campus Chat
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+          💬 Area Chat
         </h1>
-        <p className="text-gray-400">Connect with fellow students</p>
+        <p className="text-gray-400">Connect with students in this area</p>
       </motion.div>
 
-      <motion.div
-        className="flex-1 glass rounded-2xl border border-white/10 shadow-xl overflow-hidden"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-      >
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-purple-500/30 scrollbar-track-transparent h-full">
-          {loading ? (
-            <div className="flex justify-center items-center h-full">
-              <Loader2 className="animate-spin w-8 h-8 text-purple-400" />
-            </div>
-          ) : messages.length === 0 ? (
-            <motion.div
-              className="text-center mt-20"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <div className="text-6xl mb-4">💭</div>
-              <p className="text-gray-400">
-                No messages yet. Start the conversation!
-              </p>
-            </motion.div>
-          ) : (
-            messages.map((msg, i) => {
-              const isMine =
-                msg.sender?._id === user?.id || msg.sender?.id === user?.id;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: isMine ? 20 : -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className={`flex w-full ${
-                    isMine ? "justify-end" : "justify-start"
+      {/* CHAT BOX */}
+      <div className="flex-1 glass rounded-2xl border border-white/10 overflow-y-auto p-4 space-y-4">
+        {loading ? (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="animate-spin w-8 h-8 text-purple-400" />
+          </div>
+        ) : (
+          messages.map((msg, i) => {
+            const isMine =
+              msg.sender?._id === user?.id || msg.sender?.id === user?.id;
+
+            return (
+              <div
+                key={msg._id || i}
+                className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[75%] p-3 rounded-xl relative ${
+                    isMine
+                      ? "bg-purple-600 text-white"
+                      : "glass border border-white/10"
                   }`}
                 >
-                  <div
-                    className={`flex flex-col max-w-[75%] p-4 rounded-2xl shadow-lg ${
-                      isMine
-                        ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-br-md"
-                        : "glass border border-white/10 text-white rounded-bl-md"
-                    }`}
-                  >
-                    {!isMine && (
-                      <p className="text-xs text-purple-300 mb-2 font-medium">
-                        {msg.sender?.fullName || "Student"}
-                      </p>
-                    )}
-                    <p className="text-sm leading-relaxed">{msg.text}</p>
-                    <span
-                      className={`text-[10px] mt-2 text-right ${
-                        isMine ? "text-white/70" : "text-gray-400"
-                      }`}
+                  {isMine && msg._id && (
+                    <button
+                      onClick={() => handleDeleteMessage(msg._id)}
+                      className="absolute top-1 right-1 text-red-400"
                     >
-                      {new Date(msg.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </motion.div>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                  {!isMine && (
+                    <p className="text-xs text-purple-300 mb-1">
+                      {msg.sender?.fullName || "Student"}
+                    </p>
+                  )}
+                  <p className="text-sm">{msg.text}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-      <motion.form
+      {/* INPUT */}
+      <form
         onSubmit={handleSend}
-        className="flex items-center gap-3 mt-4 glass border border-white/10 p-4 rounded-2xl shadow-xl"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
+        className="flex gap-3 mt-4 glass p-4 rounded-xl"
       >
         <input
-          type="text"
-          placeholder="Type your message..."
-          className="flex-1 bg-transparent focus:outline-none text-white placeholder-gray-400 text-sm"
+          className="flex-1 bg-transparent outline-none text-white"
+          placeholder="Type a message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <motion.button
-          type="submit"
-          className="btn-primary px-6 py-3 flex items-center gap-2 disabled:opacity-50"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          disabled={!text.trim()}
-        >
-          <SendHorizonal className="h-4 w-4" />
-          Send
-        </motion.button>
-      </motion.form>
+        <button className="btn-primary px-4" disabled={!text.trim()}>
+          <SendHorizonal size={16} />
+        </button>
+      </form>
+
+      {/* DELETE MODAL */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div className="glass p-6 rounded-xl max-w-sm w-full">
+              <h3 className="text-red-300 mb-4">Delete message?</h3>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteMessage}
+                  className="bg-red-600 px-4 py-2 rounded-md text-white"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,11 @@
 // src/context/SocketContext.jsx
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+} from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 
@@ -13,49 +19,84 @@ export const SocketProvider = ({ children }) => {
   const [privateMessages, setPrivateMessages] = useState([]);
   const [roomMessages, setRoomMessages] = useState([]);
   const [clubMessages, setClubMessages] = useState([]);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    if (!token || !user?._id) return;
+    if (!token || !user?._id) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setSocket(null);
+      }
+      return;
+    }
 
-    const backendURL =
-      import.meta.env.VITE_BACKEND_URL?.replace("/api/nex", "") ||
-      "http://localhost:8000";
+    // Only create socket once
+    if (!socketRef.current) {
+      const backendURL =
+        import.meta.env.VITE_BACKEND_URL?.replace("/api/nex", "") ||
+        "http://localhost:8000";
 
-    const newSocket = io(backendURL, {
-      query: { userId: user._id },
-      transports: ["websocket"],
-      withCredentials: true,
-    });
+      const newSocket = io(backendURL, {
+        query: { userId: user._id },
+        transports: ["websocket"],
+        withCredentials: true,
+        timeout: 5000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-    newSocket.on("connect", () => console.log("🟢 Connected:", newSocket.id));
-    newSocket.on("disconnect", () => console.log("🔴 Socket disconnected"));
+      newSocket.on("connect", () => console.log("🟢 Connected:", newSocket.id));
+      newSocket.on("disconnect", () => console.log("🔴 Socket disconnected"));
+      newSocket.on("connect_error", (error) =>
+        console.log("❌ Connection error:", error)
+      );
+      newSocket.on("reconnect_attempt", (attempt) =>
+        console.log(`🔄 Reconnect attempt ${attempt}`)
+      );
 
-    // Online users + avatars
-    newSocket.on("onlineUsersUpdate", (users) => setOnlineUsers(users));
-    newSocket.on("avatarsUpdate", (data) => setAvatars(data));
+      // Online users + avatars
+      newSocket.on("onlineUsersUpdate", (users) => setOnlineUsers(users));
+      newSocket.on("avatarsUpdate", (data) => setAvatars(data));
 
-    // Private messages
-    newSocket.on("receivePrivateMessage", (msg) => {
-      setPrivateMessages((prev) => [...prev, msg]);
-    });
+      // Private messages
+      newSocket.on("receivePrivateMessage", (msg) => {
+        setPrivateMessages((prev) => [...prev, msg]);
+      });
 
-    // Room chat
-    newSocket.on("receiveRoomMessage", (msg) => {
-      setRoomMessages((prev) => [...prev, msg]);
-    });
+      // Room chat
+      newSocket.on("receiveRoomMessage", (msg) => {
+        setRoomMessages((prev) => [...prev, msg]);
+      });
 
-    // Club events
-    newSocket.on("receiveClubMessage", (msg) => {
-      setClubMessages((prev) => [...prev, msg]);
-    });
+      // Club events
+      newSocket.on("receiveClubMessage", (msg) => {
+        setClubMessages((prev) => [...prev, msg]);
+      });
 
-    newSocket.on("clubEventUpdate", ({ eventRoom, participants }) => {
-      console.log(`🎪 Event ${eventRoom} now has`, participants.length, "participants");
-    });
+      newSocket.on("clubEventUpdate", ({ eventRoom, participants }) => {
+        console.log(
+          `🎪 Event ${eventRoom} now has`,
+          participants.length,
+          "participants"
+        );
+      });
 
-    setSocket(newSocket);
-    return () => newSocket.disconnect();
+      socketRef.current = newSocket;
+      setSocket(newSocket);
+    }
   }, [token, user?._id]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
 
   // === Socket helper methods ===
 

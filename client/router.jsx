@@ -13,7 +13,6 @@ import ChatPage from "./src/pages/ChatPage";
 import ClubsPage from "./src/pages/ClubsPage";
 import AreaDashboard from "./src/pages/AreaDashboard";
 
-
 export default function AppRouter() {
   const { user } = useAuth();
   const location = useLocation();
@@ -66,7 +65,15 @@ export default function AppRouter() {
         }
       />
       <Route
-        path="/notes"
+        path="/area/:areaId"
+        element={
+          <Protected>
+            <AreaDashboard />
+          </Protected>
+        }
+      />
+      <Route
+        path="/area/:areaId/notes"
         element={
           <Protected>
             <NotesPage />
@@ -74,7 +81,7 @@ export default function AppRouter() {
         }
       />
       <Route
-        path="/chat"
+        path="/area/:areaId/chat"
         element={
           <Protected>
             <ChatPage />
@@ -82,15 +89,7 @@ export default function AppRouter() {
         }
       />
       <Route
-        path="/clubs/:id"
-        element={
-          <Protected>
-            <ClubPage />
-          </Protected>
-        }
-      />
-      <Route
-        path="/clubs"
+        path="/area/:areaId/clubs"
         element={
           <Protected>
             <ClubsPage />
@@ -98,14 +97,21 @@ export default function AppRouter() {
         }
       />
       <Route
-        path="/events/:id"
+        path="/area/:areaId/clubs/:id"
+        element={
+          <Protected>
+            <ClubPage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/area/:areaId/events/:id"
         element={
           <Protected>
             <EventPage />
           </Protected>
         }
       />
-      <Route path="/area/:id" element={<AreaDashboard />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

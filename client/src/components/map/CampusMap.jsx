@@ -128,10 +128,11 @@ export default function CampusMap({
 
   /* ---------- avatar trail effect ---------- */
   useEffect(() => {
+    const trailId = `${Date.now()}-${Math.random()}`;
     setTrails((prev) =>
       [
         ...prev,
-        { id: Date.now(), x: Math.random() * 1200, y: Math.random() * 520 },
+        { id: trailId, x: Math.random() * 1200, y: Math.random() * 520 },
       ].slice(-20)
     );
   }, [userAreaId]);
