@@ -7,7 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("nexora_user")) || null
   );
-  const [token, setToken] = useState(localStorage.getItem("nexora_token") || null);
+  const [token, setToken] = useState(
+    localStorage.getItem("nexora_token") || null
+  );
 
   // ✅ login(user, token)
   const login = (user, token) => {
@@ -22,6 +24,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("nexora_token");
     setUser(null);
     setToken(null);
+  };
+
+  const refreshUser = async () => {
+    if (token) {
+      try {
+        const data = await getUserInfo(token);
+        setUser(data);
+        localStorage.setItem("nexora_user", JSON.stringify(data));
+      } catch (err) {
+        console.error("AuthContext: Failed to refresh user", err);
+      }
+    }
   };
 
   // ✅ Auto-load user on refresh
@@ -41,7 +55,9 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, setUser, setToken }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, refreshUser, setUser, setToken }}
+    >
       {children}
     </AuthContext.Provider>
   );

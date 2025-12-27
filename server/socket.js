@@ -32,9 +32,10 @@ function initSocket(server) {
       avatars[userId] = {
         x: userDoc?.position?.x || 200 + Math.random() * 100,
         y: userDoc?.position?.y || 200 + Math.random() * 100,
-        color,
+        color: userDoc?.avatar?.color || color,
         name: userDoc?.fullName || `User-${userId.slice(-4)}`,
         areaSlug: userDoc?.position?.areaSlug || "main-entrance",
+        avatar: userDoc?.avatar || {},
       };
     }
 
@@ -92,6 +93,14 @@ function initSocket(server) {
           lastUpdated: new Date(),
         },
       }).catch(() => { });
+    });
+
+    // ========== 🎨 AVATAR UPDATE ==========
+    socket.on("updateAvatar", async (avatarData) => {
+      if (!avatars[userId]) return;
+      avatars[userId].avatar = { ...avatars[userId].avatar, ...avatarData };
+      avatars[userId].color = avatarData.color || avatars[userId].color;
+      io.emit("avatarsUpdate", avatars);
     });
 
     // ========== 💬 PRIVATE MESSAGING ==========

@@ -301,10 +301,7 @@ export default function AreaDashboard() {
                       <h3 className="text-lg font-semibold text-purple-300 mb-2">
                         Navigate the Campus
                       </h3>
-                      <p className="text-gray-300 text-sm">
-                        Click anywhere on the map to move your avatar • Invite
-                        friends to join this area
-                      </p>
+                     
                       <div className="mt-4 flex justify-center space-x-2">
                         <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
                         <div

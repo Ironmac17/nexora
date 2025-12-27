@@ -7,12 +7,14 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     profileImageUrl: { type: String, default: null },
+    bio: { type: String, default: "" },
     isVerified: { type: Boolean, default: false },
 
     avatar: {
       outfit: { type: String, default: "default" },
       color: { type: String, default: "#ffffff" },
       accessory: { type: String, default: null },
+      hairstyle: { type: String, default: "none" },
       position: {
         x: { type: Number, default: 0 },
         y: { type: Number, default: 0 },
@@ -34,7 +36,7 @@ const UserSchema = new mongoose.Schema(
       lastUpdated: { type: Date, default: Date.now }
     },
   },
-  
+
   { timestamps: true }
 );
 

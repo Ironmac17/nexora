@@ -6,6 +6,7 @@ import LoginPage from "./src/pages/LoginPage";
 import RegisterPage from "./src/pages/RegisterPage";
 import ForgotPassword from "./src/pages/ForgotPassword";
 import HomePage from "./src/pages/HomePage";
+import ProfilePage from "./src/pages/ProfilePage";
 import NotesPage from "./src/pages/NotesPage";
 import ClubPage from "./src/pages/ClubPage";
 import EventPage from "./src/pages/EventPage";
@@ -61,6 +62,14 @@ export default function AppRouter() {
         element={
           <Protected>
             <HomePage />
+          </Protected>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <Protected>
+            <ProfilePage />
           </Protected>
         }
       />

@@ -29,14 +29,15 @@ exports.getUserById = async (req, res) => {
 
 exports.updateAvatar = async (req, res) => {
   try {
-    const { outfit, color, accessory } = req.body;
+    const { outfit, color, accessory, hairstyle } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (outfit) user.avatar.outfit = outfit;
     if (color) user.avatar.color = color;
-    if (accessory) user.avatar.accessory = accessory;
+    if (accessory !== undefined) user.avatar.accessory = accessory;
+    if (hairstyle !== undefined) user.avatar.hairstyle = hairstyle;
 
     await user.save();
 
@@ -44,6 +45,25 @@ exports.updateAvatar = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error updating avatar", error: err.message });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { fullName, bio } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (fullName) user.fullName = fullName;
+    if (bio !== undefined) user.bio = bio;
+
+    await user.save();
+
+    res.status(200).json({ message: "Profile updated successfully", user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error updating profile", error: err.message });
   }
 };
 

@@ -4,6 +4,7 @@ const {
   getMe,
   getUserById,
   updateAvatar,
+  updateProfile,
   updatePosition,
   sendFriendRequest,
   acceptFriendRequest,
@@ -17,6 +18,8 @@ router.get("/me", protect, getMe);
 router.get("/:id", protect, getUserById);
 
 router.put("/avatar", protect, updateAvatar);
+
+router.put("/profile", protect, updateProfile);
 
 router.put("/position", protect, updatePosition);
 
